@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sanskar Shakti — Lead Management
 
-## Getting Started
+An inquiry/lead management app for Sanskar Shakti's Garbh Sanskar coordinators, in the visual style of [sanskarshakti.org](https://sanskarshakti.org).
 
-First, run the development server:
+- **Coordinators** log in on their phone, enter a new inquiry, and see only the leads they personally entered — landing on their Pending / On Hold list first so follow-ups don't get lost. Contact numbers have one-tap Call and WhatsApp buttons.
+- **Admins** get a dashboard with monthly conversion analytics (by centre, coordinator, location, reason), a filterable/searchable table of every lead, XLSX/PDF export, and screens to manage the Centres / Coordinators / Reasons dropdown lists and login accounts. There is no public sign-up — admins create every account.
+
+## Tech stack
+
+Next.js 16 (App Router, TypeScript) · Prisma + PostgreSQL · Tailwind CSS v4 · Recharts · exceljs / pdfkit for export · hand-rolled email+password auth (bcrypt + signed JWT cookie).
+
+## Local development
+
+Requirements: Node 20+, a Postgres database (a `docker-compose.yml` is included for a local one).
 
 ```bash
+docker compose up -d          # starts local Postgres on port 5433
+npm install
+npm run db:migrate            # creates tables (prisma migrate dev)
+npm run db:seed               # seeds centres, coordinators, reasons, and the admin/demo accounts below
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Copy `.env.example` to `.env` and adjust if needed — the checked-in `.env` already points at the Docker Postgres instance above for convenience in this environment. **Change `SESSION_SECRET`, `ADMIN_PASSWORD`, and `DEMO_COORDINATOR_PASSWORD` before deploying anywhere real.**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Seeded accounts (change these passwords after first login, from Admin → Users):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@sanskarshakti.org` | `ChangeMe123!` |
+| Coordinator (demo) | `demo@sanskarshakti.org` | `ChangeMe123!` |
 
-## Learn More
+## Deploying (Vercel + Neon)
 
-To learn more about Next.js, take a look at the following resources:
+1. Create a free Postgres database at [neon.tech](https://neon.tech) (or any managed Postgres) and copy its connection string.
+2. Push this repo to GitHub, then import it into [Vercel](https://vercel.com/new).
+3. In the Vercel project's Environment Variables, set:
+   - `DATABASE_URL` — the Neon connection string
+   - `SESSION_SECRET` — a long random string (e.g. `openssl rand -hex 32`)
+   - `ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` — your real admin account
+   - `DEMO_COORDINATOR_*` — optional, omit to skip creating a demo account
+4. Run the migration against the production database once (from your machine, with `DATABASE_URL` pointed at Neon):
+   ```bash
+   npx prisma migrate deploy
+   npm run db:seed
+   ```
+5. Deploy. Log in as the admin account and change the password from Admin → Users.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Editable lists
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Centres, Coordinators, and Reasons for not joining are seeded from the lists Sanskar Shakti provided, but every one of them can be renamed, reordered, added to, or deactivated from **Admin → Centres / Coordinators / Reasons** — no code change needed. Deactivating (rather than deleting) keeps historical leads referencing that value intact.
 
-## Deploy on Vercel
+## Notes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- The header uses a plain text wordmark rather than the site's actual logo image — drop in a real logo asset later if you'd like it to match exactly.
+- Export buttons on **Admin → Leads** respect whatever filters are currently applied.
+- **Admin → Dashboard → Print / PDF report** opens a print-optimized summary — use the browser's Save as PDF.

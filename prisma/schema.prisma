@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  COORDINATOR
+}
+
+enum LeadStatus {
+  PENDING
+  ENROLLED
+  NOT_JOINING
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  passwordHash  String
+  role          Role
+  active        Boolean  @default(true)
+  coordinatorId String?
+  coordinator   Coordinator? @relation(fields: [coordinatorId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  leadsCreated  Lead[]   @relation("LeadCreatedBy")
+
+  @@index([coordinatorId])
+}
+
+model Centre {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  leads     Lead[]
+}
+
+model Coordinator {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  leads     Lead[]
+  users     User[]
+}
+
+model ReasonNotJoining {
+  id        String   @id @default(cuid())
+  label     String   @unique
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  leads     Lead[]
+}
+
+model Lead {
+  id                 String     @id @default(cuid())
+  dateOfInquiry      DateTime
+  motherName         String
+  contactNumber      String
+  centreId           String
+  centre             Centre     @relation(fields: [centreId], references: [id])
+  motherLocation     String
+  coordinatorId      String
+  coordinator        Coordinator @relation(fields: [coordinatorId], references: [id])
+  status             LeadStatus @default(PENDING)
+  reasonNotJoiningId String?
+  reasonNotJoining   ReasonNotJoining? @relation(fields: [reasonNotJoiningId], references: [id])
+  notes              String?
+
+  createdByUserId    String
+  createdByUser      User       @relation("LeadCreatedBy", fields: [createdByUserId], references: [id])
+
+  statusChangedAt    DateTime   @default(now())
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  @@index([dateOfInquiry])
+  @@index([centreId])
+  @@index([coordinatorId])
+  @@index([status])
+  @@index([createdByUserId])
+}
