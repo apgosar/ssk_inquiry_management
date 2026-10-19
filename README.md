@@ -32,19 +32,19 @@ Seeded accounts (change these passwords after first login, from Admin → Users)
 
 ## Deploying (Vercel + Neon)
 
-1. Create a free Postgres database at [neon.tech](https://neon.tech) (or any managed Postgres) and copy its connection string.
-2. Push this repo to GitHub, then import it into [Vercel](https://vercel.com/new).
-3. In the Vercel project's Environment Variables, set:
-   - `DATABASE_URL` — the Neon connection string
-   - `SESSION_SECRET` — a long random string (e.g. `openssl rand -hex 32`)
-   - `ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` — your real admin account
-   - `DEMO_COORDINATOR_*` — optional, omit to skip creating a demo account
-4. Run the migration against the production database once (from your machine, with `DATABASE_URL` pointed at Neon):
-   ```bash
-   npx prisma migrate deploy
-   npm run db:seed
-   ```
-5. Deploy. Log in as the admin account and change the password from Admin → Users.
+The Vercel build (`vercel-build` in package.json) runs `prisma migrate deploy`, then the seed, then `next build`. You never need to run migrations from your own machine. The seed is safe to re-run: it only fills empty tables and only creates an admin if none exists, so edits made in the admin screens are never overwritten.
+
+1. Create a free Postgres database at [neon.tech](https://neon.tech). From **Connect**, copy two strings: the **pooled** one (host contains `-pooler`) and the **direct** one (untick connection pooling). Append `&connect_timeout=30` to both so a sleeping database has time to wake.
+2. Push this repo to GitHub and import it into [Vercel](https://vercel.com/new).
+3. Set these Environment Variables before the first deploy:
+   - `DATABASE_URL` — the pooled Neon string (used by the running app)
+   - `DIRECT_URL` — the direct Neon string (used only for migrations)
+   - `SESSION_SECRET` — a long random string
+   - `ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` — your first admin account
+   - `DEMO_COORDINATOR_*` — optional; omit to skip the demo account
+4. Deploy, then log in as the admin and create coordinator accounts under Admin → Users.
+
+After the first successful deploy you can remove `ADMIN_PASSWORD` from Vercel; it is only read while no admin exists.
 
 ## Editable lists
 

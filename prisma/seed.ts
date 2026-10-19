@@ -44,66 +44,58 @@ const REASONS = [
 ];
 
 async function main() {
-  for (const [i, name] of CENTRES.entries()) {
-    await prisma.centre.upsert({
-      where: { name },
-      update: {},
-      create: { name, sortOrder: i },
-    });
+  // Safe to run on every deploy: lists are only seeded into empty tables, so renames,
+  // deactivations and additions made in the admin screens are never overwritten.
+  if ((await prisma.centre.count()) === 0) {
+    for (const [i, name] of CENTRES.entries()) {
+      await prisma.centre.create({ data: { name, sortOrder: i } });
+    }
+    console.log("Seeded centres.");
   }
 
-  for (const [i, name] of COORDINATORS.entries()) {
-    await prisma.coordinator.upsert({
-      where: { name },
-      update: {},
-      create: { name, sortOrder: i },
-    });
+  if ((await prisma.coordinator.count()) === 0) {
+    for (const [i, name] of COORDINATORS.entries()) {
+      await prisma.coordinator.create({ data: { name, sortOrder: i } });
+    }
+    console.log("Seeded coordinators.");
   }
 
-  for (const [i, label] of REASONS.entries()) {
-    await prisma.reasonNotJoining.upsert({
-      where: { label },
-      update: {},
-      create: { label, sortOrder: i },
-    });
+  if ((await prisma.reasonNotJoining.count()) === 0) {
+    for (const [i, label] of REASONS.entries()) {
+      await prisma.reasonNotJoining.create({ data: { label, sortOrder: i } });
+    }
+    console.log("Seeded reasons.");
   }
 
   const adminEmail = process.env.ADMIN_EMAIL;
   const adminPassword = process.env.ADMIN_PASSWORD;
-  if (adminEmail && adminPassword) {
-    const passwordHash = await bcrypt.hash(adminPassword, 10);
-    await prisma.user.upsert({
-      where: { email: adminEmail },
-      update: {},
-      create: {
+  if (adminEmail && adminPassword && (await prisma.user.count({ where: { role: Role.ADMIN } })) === 0) {
+    await prisma.user.create({
+      data: {
         name: process.env.ADMIN_NAME || "Admin",
-        email: adminEmail,
-        passwordHash,
+        email: adminEmail.trim().toLowerCase(),
+        passwordHash: await bcrypt.hash(adminPassword, 10),
         role: Role.ADMIN,
       },
     });
-    console.log(`Admin account ready: ${adminEmail}`);
+    console.log("Created admin account: " + adminEmail);
   }
 
   const demoEmail = process.env.DEMO_COORDINATOR_EMAIL;
   const demoPassword = process.env.DEMO_COORDINATOR_PASSWORD;
   if (demoEmail && demoPassword) {
-    const passwordHash = await bcrypt.hash(demoPassword, 10);
-    const linkedCoordinator = await prisma.coordinator.findUnique({
-      where: { name: COORDINATORS[0] },
-    });
+    const linked = await prisma.coordinator.findFirst({ orderBy: { sortOrder: "asc" } });
     await prisma.user.upsert({
-      where: { email: demoEmail },
+      where: { email: demoEmail.trim().toLowerCase() },
       update: {},
       create: {
         name: process.env.DEMO_COORDINATOR_NAME || "Demo Coordinator",
-        email: demoEmail,
-        passwordHash,
+        email: demoEmail.trim().toLowerCase(),
+        passwordHash: await bcrypt.hash(demoPassword, 10),
         role: Role.COORDINATOR,
-        coordinatorId: linkedCoordinator?.id,
+        coordinatorId: linked?.id,
       },
     });
-    console.log(`Demo coordinator account ready: ${demoEmail}`);
   }
 
   console.log("Seed complete.");
