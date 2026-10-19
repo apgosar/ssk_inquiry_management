@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // pdfkit reads its font metric files from disk at runtime; bundling breaks that on serverless.
+  serverExternalPackages: ["pdfkit"],
 };
 
 export default nextConfig;
