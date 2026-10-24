@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { requireCoordinator } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { LeadListCard } from "@/components/LeadListCard";
 import { Button } from "@/components/Button";
+import { PendingLeadList } from "./PendingLeadList";
 
 export default async function PendingLeadsPage() {
   const session = await requireCoordinator();
@@ -15,31 +15,27 @@ export default async function PendingLeadsPage() {
 
   return (
     <div>
-      <div className="mb-5 flex items-center justify-between">
-        <div>
-          <h1 className="font-heading text-2xl font-semibold text-foreground">
-            Pending / On Hold
-          </h1>
-          <p className="text-sm text-muted">
-            {leads.length} lead{leads.length === 1 ? "" : "s"} waiting on you
-          </p>
-        </div>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h1 className="font-heading text-2xl font-semibold text-foreground">
+          Pending / On Hold <span className="ml-1 text-primary lining-nums">{leads.length}</span>
+        </h1>
         <Link href="/leads/new">
           <Button size="sm">+ New</Button>
         </Link>
       </div>
 
-      {leads.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted">
-          No pending inquiries. Nice and caught up — add a new inquiry any time.
-        </p>
-      ) : (
-        <div className="space-y-3">
-          {leads.map((lead) => (
-            <LeadListCard key={lead.id} lead={lead} href={`/leads/${lead.id}`} />
-          ))}
-        </div>
-      )}
+      <PendingLeadList
+        leads={leads.map((l) => ({
+          id: l.id,
+          dateOfInquiry: l.dateOfInquiry,
+          motherName: l.motherName,
+          contactNumber: l.contactNumber,
+          motherLocation: l.motherLocation,
+          status: l.status,
+          centre: { name: l.centre.name },
+          coordinator: { name: l.coordinator.name },
+        }))}
+      />
     </div>
   );
 }

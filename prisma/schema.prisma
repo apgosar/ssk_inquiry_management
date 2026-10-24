@@ -85,6 +85,7 @@ model Lead {
   createdByUserId    String
   createdByUser      User       @relation("LeadCreatedBy", fields: [createdByUserId], references: [id])
 
+  enrollmentDate     DateTime?
   statusChangedAt    DateTime   @default(now())
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt

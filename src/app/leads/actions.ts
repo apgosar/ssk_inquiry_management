@@ -38,6 +38,10 @@ export async function createLeadAction(
       status: data.status,
       reasonNotJoiningId:
         data.status === "NOT_JOINING" ? data.reasonNotJoiningId || null : null,
+      enrollmentDate:
+        data.status === "ENROLLED" && data.enrollmentDate
+          ? new Date(data.enrollmentDate)
+          : null,
       notes: data.notes || null,
       createdByUserId: session.sub,
       statusChangedAt: new Date(),
@@ -84,6 +88,10 @@ export async function updateLeadAction(
       status: data.status,
       reasonNotJoiningId:
         data.status === "NOT_JOINING" ? data.reasonNotJoiningId || null : null,
+      enrollmentDate:
+        data.status === "ENROLLED" && data.enrollmentDate
+          ? new Date(data.enrollmentDate)
+          : null,
       notes: data.notes || null,
       statusChangedAt:
         data.status !== existing.status ? new Date() : existing.statusChangedAt,

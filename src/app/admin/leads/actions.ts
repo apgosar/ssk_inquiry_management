@@ -45,6 +45,10 @@ export async function updateLeadAdminAction(
       status: data.status,
       reasonNotJoiningId:
         data.status === "NOT_JOINING" ? data.reasonNotJoiningId || null : null,
+      enrollmentDate:
+        data.status === "ENROLLED" && data.enrollmentDate
+          ? new Date(data.enrollmentDate)
+          : null,
       notes: data.notes || null,
       statusChangedAt:
         data.status !== existing.status ? new Date() : existing.statusChangedAt,

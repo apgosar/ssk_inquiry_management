@@ -142,7 +142,12 @@ function computeDashboard(leads: LeadWithRelations[], filter: DashboardFilter) {
   const closed = [...enrolled, ...notJoining];
   const avgDaysToClose = closed.length
     ? closed.reduce(
-        (sum, l) => sum + differenceInCalendarDays(l.statusChangedAt, l.dateOfInquiry),
+        (sum, l) => {
+          // Enrolled leads use the recorded enrollment date; older ones (and Not Joining)
+          // fall back to the day the status was changed in the app.
+          const closedOn = l.status === "ENROLLED" ? l.enrollmentDate ?? l.statusChangedAt : l.statusChangedAt;
+          return sum + differenceInCalendarDays(closedOn, l.dateOfInquiry);
+        },
         0
       ) / closed.length
     : null;

@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useSyncExternalStore } from "react";
 import { inputClass, FieldGroup, FieldLabel, Select } from "@/components/fields";
 import { Button } from "@/components/Button";
 import type { LeadFormState } from "@/lib/lead-schema";
+import { localDateString } from "@/lib/dates";
 
 type Option = { id: string; label: string };
 
@@ -28,6 +29,7 @@ export function LeadForm({
     coordinatorId: string;
     status: string;
     reasonNotJoiningId: string;
+    enrollmentDate: string;
     notes: string;
   }>;
   submitLabel: string;
@@ -35,7 +37,26 @@ export function LeadForm({
   const [state, formAction, pending] = useActionState(action, {});
   const values = { ...defaultValues, ...state.values };
   const [status, setStatus] = useState(values.status || "PENDING");
+  // The user's local "today". Empty on the server, filled in right after hydration (no mismatch).
+  const today = useSyncExternalStore(
+    () => () => {},
+    () => localDateString(),
+    () => ""
+  );
+  const [pickedInquiryDate, setInquiryDate] = useState(values.dateOfInquiry || "");
+  // A new inquiry starts on today's date; an edited one keeps its own.
+  const inquiryDate = pickedInquiryDate || today;
+  const [enrollmentDate, setEnrollmentDate] = useState(values.enrollmentDate || "");
   const errors = state.fieldErrors || {};
+
+  // Picking Enrolled defaults the enrollment date to today in the user's own timezone.
+  function handleStatusChange(next: string) {
+    setStatus(next);
+    if (next === "ENROLLED" && !enrollmentDate) {
+      // Today, but never before the inquiry date.
+      setEnrollmentDate(inquiryDate && inquiryDate > today ? inquiryDate : today);
+    }
+  }
 
   return (
     <form action={formAction} className="pb-4">
@@ -46,7 +67,9 @@ export function LeadForm({
           name="dateOfInquiry"
           type="date"
           required
-          defaultValue={values.dateOfInquiry}
+          max={today || undefined}
+          value={inquiryDate}
+          onChange={(e) => setInquiryDate(e.target.value)}
           className={inputClass}
         />
         {errors.dateOfInquiry && <FieldError message={errors.dateOfInquiry} />}
@@ -137,13 +160,30 @@ export function LeadForm({
           name="status"
           required
           value={status}
-          onChange={(e) => setStatus(e.target.value)}
+          onChange={(e) => handleStatusChange(e.target.value)}
         >
           <option value="PENDING">Pending / On Hold</option>
           <option value="ENROLLED">Enrolled</option>
           <option value="NOT_JOINING">Not Joining</option>
         </Select>
       </FieldGroup>
+
+      {status === "ENROLLED" && (
+        <FieldGroup>
+          <FieldLabel htmlFor="enrollmentDate">Date of enrollment</FieldLabel>
+          <input
+            id="enrollmentDate"
+            name="enrollmentDate"
+            type="date"
+            required
+            min={inquiryDate || undefined}
+            value={enrollmentDate}
+            onChange={(e) => setEnrollmentDate(e.target.value)}
+            className={inputClass}
+          />
+          {errors.enrollmentDate && <FieldError message={errors.enrollmentDate} />}
+        </FieldGroup>
+      )}
 
       {status === "NOT_JOINING" && (
         <FieldGroup>

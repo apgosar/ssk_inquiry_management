@@ -49,6 +49,11 @@ export default async function EditLeadPage({
           coordinatorId: lead.coordinatorId,
           status: lead.status,
           reasonNotJoiningId: lead.reasonNotJoiningId || "",
+          // Leads enrolled before this field existed fall back to the date they were marked Enrolled.
+          enrollmentDate:
+            (lead.enrollmentDate ?? (lead.status === "ENROLLED" ? lead.statusChangedAt : null))
+              ?.toISOString()
+              .slice(0, 10) || "",
           notes: lead.notes || "",
         }}
         submitLabel="Save changes"

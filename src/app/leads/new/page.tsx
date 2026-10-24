@@ -11,8 +11,6 @@ export default async function NewInquiryPage() {
     getActiveReasons(),
   ]);
 
-  const today = new Date().toISOString().slice(0, 10);
-
   return (
     <div>
       <h1 className="mb-5 font-heading text-2xl font-semibold text-foreground">
@@ -24,7 +22,6 @@ export default async function NewInquiryPage() {
         coordinators={coordinators.map((c) => ({ id: c.id, label: c.name }))}
         reasons={reasons.map((r) => ({ id: r.id, label: r.label }))}
         defaultValues={{
-          dateOfInquiry: today,
           coordinatorId: session.coordinatorId || "",
           status: "PENDING",
         }}
