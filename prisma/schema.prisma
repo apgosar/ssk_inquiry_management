@@ -62,6 +62,8 @@ model ReasonNotJoining {
   label     String   @unique
   active    Boolean  @default(true)
   sortOrder Int      @default(0)
+  // When true, picking this reason asks the coordinator to type the actual reason (e.g. "Others").
+  requiresDetail Boolean @default(false)
   createdAt DateTime @default(now())
 
   leads     Lead[]
@@ -80,6 +82,7 @@ model Lead {
   status             LeadStatus @default(PENDING)
   reasonNotJoiningId String?
   reasonNotJoining   ReasonNotJoining? @relation(fields: [reasonNotJoiningId], references: [id])
+  otherReason        String?
   notes              String?
 
   createdByUserId    String

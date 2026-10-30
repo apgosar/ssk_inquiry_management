@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useState, useSyncExternalStore } from "react";
+import { startTransition, useActionState, useState, useSyncExternalStore } from "react";
 import { inputClass, FieldGroup, FieldLabel, Select } from "@/components/fields";
 import { Button } from "@/components/Button";
 import type { LeadFormState } from "@/lib/lead-schema";
 import { localDateString } from "@/lib/dates";
 
 type Option = { id: string; label: string };
+type ReasonOption = Option & { requiresDetail: boolean };
 
 export function LeadForm({
   action,
@@ -19,7 +20,7 @@ export function LeadForm({
   action: (state: LeadFormState, formData: FormData) => Promise<LeadFormState>;
   centres: Option[];
   coordinators: Option[];
-  reasons: Option[];
+  reasons: ReasonOption[];
   defaultValues?: Partial<{
     dateOfInquiry: string;
     motherName: string;
@@ -29,6 +30,7 @@ export function LeadForm({
     coordinatorId: string;
     status: string;
     reasonNotJoiningId: string;
+    otherReason: string;
     enrollmentDate: string;
     notes: string;
   }>;
@@ -47,6 +49,9 @@ export function LeadForm({
   // A new inquiry starts on today's date; an edited one keeps its own.
   const inquiryDate = pickedInquiryDate || today;
   const [enrollmentDate, setEnrollmentDate] = useState(values.enrollmentDate || "");
+  const [reasonId, setReasonId] = useState(values.reasonNotJoiningId || "");
+  const [otherReason, setOtherReason] = useState(values.otherReason || "");
+  const reasonNeedsDetail = reasons.some((r) => r.id === reasonId && r.requiresDetail);
   const errors = state.fieldErrors || {};
 
   // Picking Enrolled defaults the enrollment date to today in the user's own timezone.
@@ -59,7 +64,16 @@ export function LeadForm({
   }
 
   return (
-    <form action={formAction} className="pb-4">
+    // Submitting via onSubmit (instead of action={...}) stops React 19 from resetting the form
+    // after the action finishes, which would wipe the user's entries when the server rejects them.
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
+        startTransition(() => formAction(formData));
+      }}
+      className="pb-4"
+    >
       <FieldGroup>
         <FieldLabel htmlFor="dateOfInquiry">Date of inquiry</FieldLabel>
         <input
@@ -192,7 +206,8 @@ export function LeadForm({
             id="reasonNotJoiningId"
             name="reasonNotJoiningId"
             required={status === "NOT_JOINING"}
-            defaultValue={values.reasonNotJoiningId || ""}
+            value={reasonId}
+            onChange={(e) => setReasonId(e.target.value)}
           >
             <option value="" disabled>
               Select reason
@@ -206,6 +221,24 @@ export function LeadForm({
           {errors.reasonNotJoiningId && (
             <FieldError message={errors.reasonNotJoiningId} />
           )}
+        </FieldGroup>
+      )}
+
+      {status === "NOT_JOINING" && reasonNeedsDetail && (
+        <FieldGroup>
+          <FieldLabel htmlFor="otherReason">Please specify the reason</FieldLabel>
+          <textarea
+            id="otherReason"
+            name="otherReason"
+            rows={3}
+            required
+            maxLength={500}
+            value={otherReason}
+            onChange={(e) => setOtherReason(e.target.value)}
+            className={inputClass}
+            placeholder="Type the reason for not joining…"
+          />
+          {errors.otherReason && <FieldError message={errors.otherReason} />}
         </FieldGroup>
       )}
 

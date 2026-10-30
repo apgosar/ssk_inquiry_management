@@ -62,7 +62,9 @@ async function main() {
 
   if ((await prisma.reasonNotJoining.count()) === 0) {
     for (const [i, label] of REASONS.entries()) {
-      await prisma.reasonNotJoining.create({ data: { label, sortOrder: i } });
+      await prisma.reasonNotJoining.create({
+        data: { label, sortOrder: i, requiresDetail: label.startsWith("Others") },
+      });
     }
     console.log("Seeded reasons.");
   }

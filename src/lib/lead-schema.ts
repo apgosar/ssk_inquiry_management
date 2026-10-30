@@ -14,6 +14,7 @@ export const leadSchema = z
     coordinatorId: z.string().min(1, "Select who handled the inquiry."),
     status: z.enum(["PENDING", "ENROLLED", "NOT_JOINING"]),
     reasonNotJoiningId: z.string().optional().or(z.literal("")),
+    otherReason: z.string().max(500, "Keep the reason under 500 characters.").optional().or(z.literal("")),
     enrollmentDate: z.string().optional().or(z.literal("")),
     notes: z.string().trim().optional().or(z.literal("")),
   })
@@ -66,6 +67,7 @@ export function parseLeadFormData(formData: FormData) {
     coordinatorId: formData.get("coordinatorId"),
     status: formData.get("status"),
     reasonNotJoiningId: formData.get("reasonNotJoiningId") ?? "",
+    otherReason: formData.get("otherReason") ?? "",
     enrollmentDate: formData.get("enrollmentDate") ?? "",
     notes: formData.get("notes") ?? "",
   });

@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
       location: lead.motherLocation,
       coordinator: lead.coordinator.name,
       status: statusLabel(lead.status),
-      reason: lead.reasonNotJoining?.label || "",
+      reason: [lead.reasonNotJoining?.label, lead.otherReason].filter(Boolean).join(": "),
     };
 
     let x = startX;

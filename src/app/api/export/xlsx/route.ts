@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
     { header: "Status", key: "status", width: 16 },
     { header: "Date of Enrollment", key: "enrollmentDate", width: 18 },
     { header: "Reason (if not joining)", key: "reason", width: 28 },
+    { header: "Reason details (Others)", key: "otherReason", width: 32 },
     { header: "Notes / Remarks", key: "notes", width: 32 },
     { header: "Entered By", key: "enteredBy", width: 18 },
   ];
@@ -47,6 +48,7 @@ export async function GET(request: NextRequest) {
       status: statusLabel(lead.status),
       enrollmentDate: lead.enrollmentDate ? format(lead.enrollmentDate, "dd-MM-yyyy") : "",
       reason: lead.reasonNotJoining?.label || "",
+      otherReason: lead.otherReason || "",
       notes: lead.notes || "",
       enteredBy: lead.createdByUser.name,
     });

@@ -40,7 +40,7 @@ export default async function AdminEditLeadPage({
         action={boundAction}
         centres={centres.map((c) => ({ id: c.id, label: c.name }))}
         coordinators={coordinators.map((c) => ({ id: c.id, label: c.name }))}
-        reasons={reasons.map((r) => ({ id: r.id, label: r.label }))}
+        reasons={reasons.map((r) => ({ id: r.id, label: r.label, requiresDetail: r.requiresDetail }))}
         defaultValues={{
           dateOfInquiry: lead.dateOfInquiry.toISOString().slice(0, 10),
           motherName: lead.motherName,
@@ -50,6 +50,7 @@ export default async function AdminEditLeadPage({
           coordinatorId: lead.coordinatorId,
           status: lead.status,
           reasonNotJoiningId: lead.reasonNotJoiningId || "",
+          otherReason: lead.otherReason || "",
           // Leads enrolled before this field existed fall back to the date they were marked Enrolled.
           enrollmentDate:
             (lead.enrollmentDate ?? (lead.status === "ENROLLED" ? lead.statusChangedAt : null))

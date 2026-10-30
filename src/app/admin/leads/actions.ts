@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
+import { resolveOtherReason } from "@/lib/lead-reason";
 import {
   parseLeadFormData,
   fieldErrorsFrom,
@@ -31,6 +32,15 @@ export async function updateLeadAdminAction(
     };
   }
 
+  const detail = await resolveOtherReason(parsed.data);
+  if (detail.error) {
+    return {
+      error: "Please fix the highlighted fields.",
+      fieldErrors: { otherReason: detail.error },
+      values: Object.fromEntries(formData.entries()) as Record<string, string>,
+    };
+  }
+
   const data = parsed.data;
 
   await prisma.lead.update({
@@ -49,6 +59,7 @@ export async function updateLeadAdminAction(
         data.status === "ENROLLED" && data.enrollmentDate
           ? new Date(data.enrollmentDate)
           : null,
+      otherReason: detail.otherReason,
       notes: data.notes || null,
       statusChangedAt:
         data.status !== existing.status ? new Date() : existing.statusChangedAt,

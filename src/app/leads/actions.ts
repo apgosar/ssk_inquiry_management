@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireCoordinator } from "@/lib/auth";
+import { resolveOtherReason } from "@/lib/lead-reason";
 import {
   parseLeadFormData,
   fieldErrorsFrom,
@@ -25,6 +26,15 @@ export async function createLeadAction(
     };
   }
 
+  const detail = await resolveOtherReason(parsed.data);
+  if (detail.error) {
+    return {
+      error: "Please fix the highlighted fields.",
+      fieldErrors: { otherReason: detail.error },
+      values: Object.fromEntries(formData.entries()) as Record<string, string>,
+    };
+  }
+
   const data = parsed.data;
 
   await prisma.lead.create({
@@ -42,6 +52,7 @@ export async function createLeadAction(
         data.status === "ENROLLED" && data.enrollmentDate
           ? new Date(data.enrollmentDate)
           : null,
+      otherReason: detail.otherReason,
       notes: data.notes || null,
       createdByUserId: session.sub,
       statusChangedAt: new Date(),
@@ -74,6 +85,15 @@ export async function updateLeadAction(
     };
   }
 
+  const detail = await resolveOtherReason(parsed.data);
+  if (detail.error) {
+    return {
+      error: "Please fix the highlighted fields.",
+      fieldErrors: { otherReason: detail.error },
+      values: Object.fromEntries(formData.entries()) as Record<string, string>,
+    };
+  }
+
   const data = parsed.data;
 
   await prisma.lead.update({
@@ -92,6 +112,7 @@ export async function updateLeadAction(
         data.status === "ENROLLED" && data.enrollmentDate
           ? new Date(data.enrollmentDate)
           : null,
+      otherReason: detail.otherReason,
       notes: data.notes || null,
       statusChangedAt:
         data.status !== existing.status ? new Date() : existing.statusChangedAt,

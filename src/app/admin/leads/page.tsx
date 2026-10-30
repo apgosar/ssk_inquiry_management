@@ -101,6 +101,9 @@ export default async function AdminLeadsPage({
                 </td>
                 <td className="px-4 py-3 text-xs text-muted">
                   {lead.reasonNotJoining?.label || "—"}
+                  {lead.otherReason && (
+                    <span className="mt-0.5 block text-foreground">{lead.otherReason}</span>
+                  )}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3">
                   <Link href={`/admin/leads/${lead.id}`} className="text-sm font-medium text-primary">

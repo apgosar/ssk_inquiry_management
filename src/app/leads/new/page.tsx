@@ -20,7 +20,7 @@ export default async function NewInquiryPage() {
         action={createLeadAction}
         centres={centres.map((c) => ({ id: c.id, label: c.name }))}
         coordinators={coordinators.map((c) => ({ id: c.id, label: c.name }))}
-        reasons={reasons.map((r) => ({ id: r.id, label: r.label }))}
+        reasons={reasons.map((r) => ({ id: r.id, label: r.label, requiresDetail: r.requiresDetail }))}
         defaultValues={{
           coordinatorId: session.coordinatorId || "",
           status: "PENDING",
