@@ -29,6 +29,7 @@ export default async function PendingLeadsPage() {
           id: l.id,
           dateOfInquiry: l.dateOfInquiry,
           motherName: l.motherName,
+          countryCode: l.countryCode,
           contactNumber: l.contactNumber,
           motherLocation: l.motherLocation,
           status: l.status,

@@ -48,13 +48,13 @@ export async function updateLeadAdminAction(
     data: {
       dateOfInquiry: new Date(data.dateOfInquiry),
       motherName: data.motherName,
+      countryCode: data.countryCode,
       contactNumber: data.contactNumber,
       centreId: data.centreId,
       motherLocation: data.motherLocation,
       coordinatorId: data.coordinatorId,
       status: data.status,
-      reasonNotJoiningId:
-        data.status === "NOT_JOINING" ? data.reasonNotJoiningId || null : null,
+      reasons: { set: (data.status === "NOT_JOINING" ? data.reasonNotJoiningIds : []).map((id) => ({ id })) },
       enrollmentDate:
         data.status === "ENROLLED" && data.enrollmentDate
           ? new Date(data.enrollmentDate)

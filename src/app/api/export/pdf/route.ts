@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
   const leads = await prisma.lead.findMany({
     where,
-    include: { centre: true, coordinator: true, reasonNotJoining: true },
+    include: { centre: true, coordinator: true, reasons: true },
     orderBy: { dateOfInquiry: "desc" },
   });
 
@@ -81,12 +81,12 @@ export async function GET(request: NextRequest) {
     const row: Record<(typeof COLUMNS)[number]["key"], string> = {
       date: format(lead.dateOfInquiry, "dd-MM-yyyy"),
       motherName: lead.motherName,
-      contact: lead.contactNumber,
+      contact: `${lead.countryCode} ${lead.contactNumber}`,
       centre: lead.centre.name,
       location: lead.motherLocation,
       coordinator: lead.coordinator.name,
       status: statusLabel(lead.status),
-      reason: [lead.reasonNotJoining?.label, lead.otherReason].filter(Boolean).join(": "),
+      reason: [...lead.reasons.map((r) => r.label), lead.otherReason].filter(Boolean).join("; "),
     };
 
     let x = startX;

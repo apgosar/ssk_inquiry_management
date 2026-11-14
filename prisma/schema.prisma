@@ -73,6 +73,7 @@ model Lead {
   id                 String     @id @default(cuid())
   dateOfInquiry      DateTime
   motherName         String
+  countryCode        String     @default("+91")
   contactNumber      String
   centreId           String
   centre             Centre     @relation(fields: [centreId], references: [id])
@@ -80,8 +81,7 @@ model Lead {
   coordinatorId      String
   coordinator        Coordinator @relation(fields: [coordinatorId], references: [id])
   status             LeadStatus @default(PENDING)
-  reasonNotJoiningId String?
-  reasonNotJoining   ReasonNotJoining? @relation(fields: [reasonNotJoiningId], references: [id])
+  reasons            ReasonNotJoining[]
   otherReason        String?
   notes              String?
 
@@ -93,6 +93,7 @@ model Lead {
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
 
+  @@index([contactNumber])
   @@index([dateOfInquiry])
   @@index([centreId])
   @@index([coordinatorId])

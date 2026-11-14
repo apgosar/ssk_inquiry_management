@@ -1,30 +1,39 @@
 import { z } from "zod";
+import { normalizeCountryCode } from "@/lib/phone";
 
 export const leadSchema = z
   .object({
     dateOfInquiry: z.string().min(1, "Date of inquiry is required."),
     motherName: z.string().trim().min(1, "Name of mother is required."),
-    contactNumber: z
+    countryCode: z
       .string()
       .trim()
-      .min(6, "Enter a valid contact number.")
-      .max(20, "Enter a valid contact number."),
+      .regex(/^\+\d{1,4}$/, "Enter a valid country code, e.g. +91"),
+    // Stored as digits only, without the country code.
+    contactNumber: z
+      .string()
+      .transform((s) => s.replace(/\D/g, ""))
+      .pipe(z.string().min(5, "Enter a valid contact number.").max(14, "Enter a valid contact number.")),
     centreId: z.string().min(1, "Select a centre."),
     motherLocation: z.string().trim().min(1, "Location of mother is required."),
     coordinatorId: z.string().min(1, "Select who handled the inquiry."),
     status: z.enum(["PENDING", "ENROLLED", "NOT_JOINING"]),
-    reasonNotJoiningId: z.string().optional().or(z.literal("")),
+    reasonNotJoiningIds: z.array(z.string()),
     otherReason: z.string().max(500, "Keep the reason under 500 characters.").optional().or(z.literal("")),
     enrollmentDate: z.string().optional().or(z.literal("")),
     notes: z.string().trim().optional().or(z.literal("")),
   })
   .refine(
-    (data) => data.status !== "NOT_JOINING" || !!data.reasonNotJoiningId,
+    (data) => data.status !== "NOT_JOINING" || data.reasonNotJoiningIds.length > 0,
     {
-      message: "Select a reason for not joining.",
-      path: ["reasonNotJoiningId"],
+      message: "Select at least one reason for not joining.",
+      path: ["reasonNotJoiningIds"],
     }
   )
+  .refine((data) => data.countryCode !== "+91" || data.contactNumber.length === 10, {
+    message: "Enter a 10-digit mobile number.",
+    path: ["contactNumber"],
+  })
   .refine(
     // The server runs in UTC while users are in other timezones (India is ahead, the Americas
     // behind), so allow up to one day of slack. The form itself caps the picker at the user's
@@ -61,12 +70,13 @@ export function parseLeadFormData(formData: FormData) {
   return leadSchema.safeParse({
     dateOfInquiry: formData.get("dateOfInquiry"),
     motherName: formData.get("motherName"),
-    contactNumber: formData.get("contactNumber"),
+    countryCode: normalizeCountryCode(String(formData.get("countryCode") ?? "")) || "+91",
+    contactNumber: formData.get("contactNumber") ?? "",
     centreId: formData.get("centreId"),
     motherLocation: formData.get("motherLocation"),
     coordinatorId: formData.get("coordinatorId"),
     status: formData.get("status"),
-    reasonNotJoiningId: formData.get("reasonNotJoiningId") ?? "",
+    reasonNotJoiningIds: formData.getAll("reasonNotJoiningIds").map(String),
     otherReason: formData.get("otherReason") ?? "",
     enrollmentDate: formData.get("enrollmentDate") ?? "",
     notes: formData.get("notes") ?? "",

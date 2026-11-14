@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { requireAdmin } from "@/lib/auth";
 import { logoutAction } from "@/lib/logout-action";
+import { SignOutButton } from "@/components/SignOutButton";
 import { AdminNav } from "./AdminNav";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
@@ -16,12 +17,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <p className="text-xs text-muted">{session.name} · Admin</p>
         </div>
         <form action={logoutAction}>
-          <button
-            type="submit"
-            className="text-xs font-medium text-muted underline underline-offset-2"
-          >
-            Sign out
-          </button>
+          <SignOutButton />
         </form>
       </header>
       <AdminNav />

@@ -26,6 +26,7 @@ export default async function NewInquiryPage() {
           status: "PENDING",
         }}
         submitLabel="Save inquiry"
+        checkDuplicates
       />
     </div>
   );

@@ -17,7 +17,9 @@ export function PendingLeadList({ leads }: { leads: LeadListItem[] }) {
     return leads.filter(
       (l) =>
         l.motherName.toLowerCase().includes(q) ||
-        (qDigits.length > 0 && digitsOnly(l.contactNumber).includes(qDigits))
+        (qDigits.length > 0 &&
+          (digitsOnly(l.contactNumber).includes(qDigits) ||
+            digitsOnly(`${l.countryCode}${l.contactNumber}`).includes(qDigits)))
     );
   }, [leads, query]);
 

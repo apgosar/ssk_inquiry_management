@@ -55,3 +55,10 @@ body {
     display: none !important;
   }
 }
+
+/* Tailwind v4 resets buttons to the default arrow; show the hand on anything clickable. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary {
+  cursor: pointer;
+}

@@ -3,11 +3,13 @@ import { Card } from "@/components/Card";
 import { StatusPill } from "@/components/StatusPill";
 import { PhoneActions } from "@/components/PhoneActions";
 import { format } from "date-fns";
+import { formatPhone } from "@/lib/phone";
 
 export type LeadListItem = {
   id: string;
   dateOfInquiry: Date;
   motherName: string;
+  countryCode: string;
   contactNumber: string;
   motherLocation: string;
   status: "PENDING" | "ENROLLED" | "NOT_JOINING";
@@ -42,8 +44,8 @@ export function LeadListCard({
         </div>
       </Link>
       <div className="mt-3 flex items-center justify-between gap-3">
-        <span className="text-sm text-foreground">{lead.contactNumber}</span>
-        <PhoneActions phone={lead.contactNumber} />
+        <span className="text-sm text-foreground">{formatPhone(lead.contactNumber, lead.countryCode)}</span>
+        <PhoneActions phone={lead.contactNumber} countryCode={lead.countryCode} />
       </div>
     </Card>
   );

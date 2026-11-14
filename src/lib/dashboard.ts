@@ -19,7 +19,7 @@ export type DashboardFilter = {
 type LeadWithRelations = Lead & {
   centre: Centre;
   coordinator: Coordinator;
-  reasonNotJoining: ReasonNotJoining | null;
+  reasons: ReasonNotJoining[];
 };
 
 export async function loadDashboardData(filter: DashboardFilter) {
@@ -29,7 +29,7 @@ export async function loadDashboardData(filter: DashboardFilter) {
       ...(filter.centreId ? { centreId: filter.centreId } : {}),
       ...(filter.coordinatorId ? { coordinatorId: filter.coordinatorId } : {}),
     },
-    include: { centre: true, coordinator: true, reasonNotJoining: true },
+    include: { centre: true, coordinator: true, reasons: true },
     orderBy: { dateOfInquiry: "asc" },
   });
 
@@ -117,8 +117,9 @@ function computeDashboard(leads: LeadWithRelations[], filter: DashboardFilter) {
 
   const reasonMap = new Map<string, number>();
   for (const l of notJoining) {
-    const label = l.reasonNotJoining?.label || "Unspecified";
-    reasonMap.set(label, (reasonMap.get(label) || 0) + 1);
+    // A lead can have several reasons; each one counts once for that lead.
+    const labels = l.reasons.length ? l.reasons.map((r) => r.label) : ["Unspecified"];
+    for (const label of labels) reasonMap.set(label, (reasonMap.get(label) || 0) + 1);
   }
   const reasonDistribution = [...reasonMap.entries()]
     .map(([label, count]) => ({ label, count }))

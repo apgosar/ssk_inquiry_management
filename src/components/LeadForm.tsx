@@ -1,10 +1,14 @@
 "use client";
 
-import { startTransition, useActionState, useState, useSyncExternalStore } from "react";
+import { startTransition, useActionState, useEffect, useState, useSyncExternalStore } from "react";
 import { inputClass, FieldGroup, FieldLabel, Select } from "@/components/fields";
 import { Button } from "@/components/Button";
 import type { LeadFormState } from "@/lib/lead-schema";
 import { localDateString } from "@/lib/dates";
+import { COUNTRY_CODES, DEFAULT_COUNTRY_CODE, normalizeCountryCode } from "@/lib/phone";
+import { checkDuplicatesAction, type DuplicateMatch } from "@/app/leads/duplicates";
+import { statusLabel } from "@/components/StatusPill";
+import { format } from "date-fns";
 
 type Option = { id: string; label: string };
 type ReasonOption = Option & { requiresDetail: boolean };
@@ -16,6 +20,7 @@ export function LeadForm({
   reasons,
   defaultValues,
   submitLabel,
+  checkDuplicates = false,
 }: {
   action: (state: LeadFormState, formData: FormData) => Promise<LeadFormState>;
   centres: Option[];
@@ -24,17 +29,20 @@ export function LeadForm({
   defaultValues?: Partial<{
     dateOfInquiry: string;
     motherName: string;
+    countryCode: string;
     contactNumber: string;
     centreId: string;
     motherLocation: string;
     coordinatorId: string;
     status: string;
-    reasonNotJoiningId: string;
+    reasonNotJoiningIds: string[];
     otherReason: string;
     enrollmentDate: string;
     notes: string;
   }>;
   submitLabel: string;
+  /** Warn when the name or mobile number matches an existing inquiry (new-inquiry page only). */
+  checkDuplicates?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
   const values = { ...defaultValues, ...state.values };
@@ -49,9 +57,45 @@ export function LeadForm({
   // A new inquiry starts on today's date; an edited one keeps its own.
   const inquiryDate = pickedInquiryDate || today;
   const [enrollmentDate, setEnrollmentDate] = useState(values.enrollmentDate || "");
-  const [reasonId, setReasonId] = useState(values.reasonNotJoiningId || "");
+  const [reasonIds, setReasonIds] = useState<string[]>(defaultValues?.reasonNotJoiningIds ?? []);
+  const [reasonError, setReasonError] = useState("");
   const [otherReason, setOtherReason] = useState(values.otherReason || "");
-  const reasonNeedsDetail = reasons.some((r) => r.id === reasonId && r.requiresDetail);
+  const reasonNeedsDetail = reasons.some((r) => reasonIds.includes(r.id) && r.requiresDetail);
+
+  const [motherName, setMotherName] = useState(values.motherName || "");
+  const initialCode = values.countryCode || DEFAULT_COUNTRY_CODE;
+  const [codeChoice, setCodeChoice] = useState(
+    COUNTRY_CODES.some((c) => c.code === initialCode) ? initialCode : "other"
+  );
+  const [customCode, setCustomCode] = useState(
+    COUNTRY_CODES.some((c) => c.code === initialCode) ? "" : initialCode
+  );
+  const countryCode = codeChoice === "other" ? normalizeCountryCode(customCode) : codeChoice;
+  const [contactNumber, setContactNumber] = useState(values.contactNumber || "");
+
+  // Looks for an existing inquiry with the same name or mobile number, shortly after typing stops.
+  const dupQuery = `${motherName.trim()}|${countryCode}|${contactNumber}`;
+  const [dup, setDup] = useState<{ key: string; matches: DuplicateMatch[] }>({ key: "", matches: [] });
+  useEffect(() => {
+    if (!checkDuplicates) return;
+    const nameOk = motherName.trim().length >= 3;
+    const numberOk = contactNumber.length >= (countryCode === "+91" ? 10 : 5);
+    if (!countryCode || (!nameOk && !numberOk)) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const matches = await checkDuplicatesAction(motherName, countryCode, contactNumber);
+        if (!cancelled) setDup({ key: dupQuery, matches });
+      } catch {
+        /* a failed check must never get in the way of entering the inquiry */
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [checkDuplicates, motherName, countryCode, contactNumber, dupQuery]);
+  const duplicates = dup.key === dupQuery ? dup.matches : [];
   const errors = state.fieldErrors || {};
 
   // Picking Enrolled defaults the enrollment date to today in the user's own timezone.
@@ -69,6 +113,10 @@ export function LeadForm({
     <form
       onSubmit={(e) => {
         e.preventDefault();
+        if (status === "NOT_JOINING" && reasonIds.length === 0) {
+          setReasonError("Select at least one reason for not joining.");
+          return;
+        }
         const formData = new FormData(e.currentTarget);
         startTransition(() => formAction(formData));
       }}
@@ -96,7 +144,9 @@ export function LeadForm({
           name="motherName"
           type="text"
           required
-          defaultValue={values.motherName}
+          value={motherName}
+          onChange={(e) => setMotherName(e.target.value)}
+          autoComplete="off"
           className={inputClass}
           placeholder="Full name"
         />
@@ -105,17 +155,52 @@ export function LeadForm({
 
       <FieldGroup>
         <FieldLabel htmlFor="contactNumber">Contact number</FieldLabel>
-        <input
-          id="contactNumber"
-          name="contactNumber"
-          type="tel"
-          inputMode="tel"
-          required
-          defaultValue={values.contactNumber}
-          className={inputClass}
-          placeholder="10-digit mobile number"
-        />
+        <div className="flex gap-2">
+          <div className="w-[8.5rem] shrink-0">
+            <Select
+              aria-label="Country code"
+              value={codeChoice}
+              onChange={(e) => setCodeChoice(e.target.value)}
+            >
+              {COUNTRY_CODES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} {c.label}
+                </option>
+              ))}
+              <option value="other">Other…</option>
+            </Select>
+          </div>
+          <input
+            id="contactNumber"
+            name="contactNumber"
+            type="tel"
+            inputMode="numeric"
+            required
+            value={contactNumber}
+            onChange={(e) => setContactNumber(e.target.value.replace(/\D/g, "").slice(0, 14))}
+            pattern={countryCode === "+91" ? "[0-9]{10}" : "[0-9]{5,14}"}
+            title={countryCode === "+91" ? "Enter a 10-digit mobile number" : "Enter the mobile number without the country code"}
+            autoComplete="off"
+            className={inputClass}
+            placeholder={countryCode === "+91" ? "10-digit mobile number" : "Mobile number"}
+          />
+        </div>
+        {codeChoice === "other" && (
+          <input
+            type="text"
+            inputMode="tel"
+            aria-label="Other country code"
+            required
+            value={customCode}
+            onChange={(e) => setCustomCode(e.target.value.replace(/[^\d+]/g, "").slice(0, 5))}
+            className={`${inputClass} mt-2`}
+            placeholder="Country code, e.g. +33"
+          />
+        )}
+        <input type="hidden" name="countryCode" value={countryCode} />
+        {errors.countryCode && <FieldError message={errors.countryCode} />}
         {errors.contactNumber && <FieldError message={errors.contactNumber} />}
+        {duplicates.length > 0 && <DuplicateWarning matches={duplicates} />}
       </FieldGroup>
 
       <FieldGroup>
@@ -201,25 +286,42 @@ export function LeadForm({
 
       {status === "NOT_JOINING" && (
         <FieldGroup>
-          <FieldLabel htmlFor="reasonNotJoiningId">Reason for not joining</FieldLabel>
-          <Select
-            id="reasonNotJoiningId"
-            name="reasonNotJoiningId"
-            required={status === "NOT_JOINING"}
-            value={reasonId}
-            onChange={(e) => setReasonId(e.target.value)}
-          >
-            <option value="" disabled>
-              Select reason
-            </option>
-            {reasons.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.label}
-              </option>
-            ))}
-          </Select>
-          {errors.reasonNotJoiningId && (
-            <FieldError message={errors.reasonNotJoiningId} />
+          <fieldset>
+            <legend className="mb-1.5 block text-sm font-medium text-foreground">
+              Reasons for not joining
+            </legend>
+            <p className="mb-2 text-xs text-muted">Select all that apply.</p>
+            <div className="space-y-2">
+              {reasons.map((r) => {
+                const checked = reasonIds.includes(r.id);
+                return (
+                  <label
+                    key={r.id}
+                    className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-4 py-2.5 text-sm ${
+                      checked ? "border-primary bg-primary-soft" : "border-border bg-surface"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      name="reasonNotJoiningIds"
+                      value={r.id}
+                      checked={checked}
+                      onChange={() => {
+                        setReasonError("");
+                        setReasonIds((prev) =>
+                          prev.includes(r.id) ? prev.filter((x) => x !== r.id) : [...prev, r.id]
+                        );
+                      }}
+                      className="h-5 w-5 shrink-0 accent-primary"
+                    />
+                    <span>{r.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+          {(reasonError || errors.reasonNotJoiningIds) && (
+            <FieldError message={reasonError || errors.reasonNotJoiningIds || ""} />
           )}
         </FieldGroup>
       )}
@@ -265,4 +367,59 @@ export function LeadForm({
 
 function FieldError({ message }: { message: string }) {
   return <p className="mt-1.5 text-xs text-not-joining">{message}</p>;
+}
+
+function DuplicateWarning({ matches }: { matches: DuplicateMatch[] }) {
+  const numberMatch = matches.some((m) => m.sameNumber);
+  return (
+    <div
+      role="alert"
+      aria-live="polite"
+      className={`mt-3 rounded-xl border p-3 text-sm ${
+        numberMatch
+          ? "border-not-joining bg-not-joining-soft text-foreground"
+          : "border-pending bg-pending-soft text-foreground"
+      }`}
+    >
+      <p className="font-semibold">
+        {numberMatch
+          ? "This mobile number is already in the system"
+          : "An inquiry with this name already exists"}
+      </p>
+      <p className="mb-2 text-xs text-muted">
+        You can still save, but check this isn&apos;t a duplicate first.
+      </p>
+      <ul className="space-y-2">
+        {matches.map((m) => (
+          <li key={m.id} className="rounded-lg bg-surface/70 px-3 py-2">
+            <p className="font-medium">
+              {m.motherName}{" "}
+              <span className="text-xs font-normal text-muted">
+                ({[m.sameNumber && "same mobile number", m.sameName && "same name"]
+                  .filter(Boolean)
+                  .join(" and ")})
+              </span>
+            </p>
+            <p className="text-xs text-muted">
+              {format(new Date(`${m.dateOfInquiry}T00:00:00`), "d MMM yyyy")} · {m.centre} · {statusLabel(m.status)} ·
+              handled by {m.handledBy}
+              {m.mine && (
+                <>
+                  {" · "}
+                  <a
+                    href={`/leads/${m.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-primary underline"
+                  >
+                    Open
+                  </a>
+                </>
+              )}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }

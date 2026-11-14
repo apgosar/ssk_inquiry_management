@@ -1,3 +1,4 @@
+import { nationalDigits } from "@/lib/phone";
 import { notFound } from "next/navigation";
 import { requireCoordinator } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -15,7 +16,7 @@ export default async function EditLeadPage({
   const session = await requireCoordinator();
 
   const [lead, centres, coordinators, reasons] = await Promise.all([
-    prisma.lead.findUnique({ where: { id } }),
+    prisma.lead.findUnique({ where: { id }, include: { reasons: true } }),
     getActiveCentres(),
     getActiveCoordinators(),
     getActiveReasons(),
@@ -33,7 +34,7 @@ export default async function EditLeadPage({
         <h1 className="font-heading text-2xl font-semibold text-foreground">
           {lead.motherName}
         </h1>
-        <PhoneActions phone={lead.contactNumber} />
+        <PhoneActions phone={lead.contactNumber} countryCode={lead.countryCode} />
       </div>
       <LeadForm
         action={boundAction}
@@ -43,12 +44,13 @@ export default async function EditLeadPage({
         defaultValues={{
           dateOfInquiry: lead.dateOfInquiry.toISOString().slice(0, 10),
           motherName: lead.motherName,
-          contactNumber: lead.contactNumber,
+          countryCode: lead.countryCode,
+          contactNumber: nationalDigits(lead.contactNumber, lead.countryCode),
           centreId: lead.centreId,
           motherLocation: lead.motherLocation,
           coordinatorId: lead.coordinatorId,
           status: lead.status,
-          reasonNotJoiningId: lead.reasonNotJoiningId || "",
+          reasonNotJoiningIds: lead.reasons.map((r) => r.id),
           otherReason: lead.otherReason || "",
           // Leads enrolled before this field existed fall back to the date they were marked Enrolled.
           enrollmentDate:

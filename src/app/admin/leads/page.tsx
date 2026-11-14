@@ -1,3 +1,4 @@
+import { formatPhone } from "@/lib/phone";
 import Link from "next/link";
 import { format } from "date-fns";
 import { prisma } from "@/lib/db";
@@ -22,7 +23,7 @@ export default async function AdminLeadsPage({
   const [leads, total, centres, coordinators] = await Promise.all([
     prisma.lead.findMany({
       where,
-      include: { centre: true, coordinator: true, reasonNotJoining: true },
+      include: { centre: true, coordinator: true, reasons: true },
       orderBy: { dateOfInquiry: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
@@ -89,8 +90,8 @@ export default async function AdminLeadsPage({
                 <td className="px-4 py-3 font-medium text-foreground">{lead.motherName}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <span className="whitespace-nowrap">{lead.contactNumber}</span>
-                    <PhoneActions phone={lead.contactNumber} />
+                    <span className="whitespace-nowrap">{formatPhone(lead.contactNumber, lead.countryCode)}</span>
+                    <PhoneActions phone={lead.contactNumber} countryCode={lead.countryCode} />
                   </div>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3">{lead.centre.name}</td>
@@ -100,7 +101,7 @@ export default async function AdminLeadsPage({
                   <StatusPill status={lead.status} />
                 </td>
                 <td className="px-4 py-3 text-xs text-muted">
-                  {lead.reasonNotJoining?.label || "—"}
+                  {lead.reasons.length ? lead.reasons.map((r) => r.label).join(", ") : "—"}
                   {lead.otherReason && (
                     <span className="mt-0.5 block text-foreground">{lead.otherReason}</span>
                   )}

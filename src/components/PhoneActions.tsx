@@ -3,18 +3,20 @@ import { LinkButton } from "@/components/Button";
 
 export function PhoneActions({
   phone,
+  countryCode,
   size = "sm",
 }: {
   phone: string;
+  countryCode?: string;
   size?: "sm" | "md";
 }) {
   return (
     <span className="inline-flex items-center gap-2">
-      <LinkButton href={telHref(phone)} variant="outline" size={size} aria-label={`Call ${phone}`}>
+      <LinkButton href={telHref(phone, countryCode)} variant="outline" size={size} aria-label={`Call ${phone}`}>
         <PhoneIcon /> Call
       </LinkButton>
       <LinkButton
-        href={whatsappHref(phone)}
+        href={whatsappHref(phone, countryCode)}
         variant="whatsapp"
         size={size}
         target="_blank"
